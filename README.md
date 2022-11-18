@@ -1,7 +1,22 @@
 
 # Design Doc
 
+**Do image resizing**
+
+
 ## Open questions
+
+TOP PRIORITY:
+
+1. Optimize upload speed to cloud
+    * resize / compress images locally before upload
+    * ensure high speed connection to network
+    * backup workstation to do training if network connection fails completely
+
+2. Queuing jobs
+
+
+---
 
 * Optimize workflow throughput for multiple simultaneous users; queue jobs?
 * Finalize best practice for:
@@ -23,15 +38,20 @@ TODO: Add persistent storage
 * Send private key to all tensorbook; update permission `sudo chmod 600 /path/to/my/key.pem`
 * Launch cloud instance(s) and attach new ssh key to it
 * Test ssh access: `ssh ubuntu@{CLOUD_IP} -i /path/to/my/key.pem`
-* Update ssh config file in tensorbooks;
-`sudo nano ~/.ssh/config`:
-```
-Host lambda-001
-    HostName <CLOUD_IP_HERE>
-    User ubuntu
-    IdentityFile /path/to/my/key.pem
-```
-* 
+* Setup tensorbook
+    * Install imagemagick:
+    ```
+    sudo apt-get install imagemagick
+    ```
+    * Update ssh config file in tensorbooks;
+    `sudo nano ~/.ssh/config`:
+    ```
+    Host lambda-001
+        HostName <CLOUD_IP_HERE>
+        User ubuntu
+        IdentityFile /path/to/my/key.pem
+    ```
+* Setup cloud instance
 ```
 # Install model code
 git clone https://github.com/huggingface/diffusers.git
@@ -60,6 +80,7 @@ export RUN_ID='eolecvk'
 export IMG_DIR_SRC='/home/eole/Desktop/pic_me'
 export IMG_DIR_DST=/home/ubuntu/inputs/${RUN_ID}
 
+python compress.py ${IMG_DIR_SRC}
 ssh ${HOSTNAME} "mkdir -p '${IMG_DIR_DST}'"
 rsync -avh ${IMG_DIR_SRC}/ lambda-001:${IMG_DIR_DST}
 ```
@@ -76,12 +97,3 @@ cat infer.py | ssh lambda-001 python -
 
 5. Download output pictures (or do we need to email it???)
 `download_img.sh`
-```
-#!/bin/bash
-
-IMG_DIR=???
-IP_ADDRESS=104.171.203.185
-
-scp -r ubuntu@${IP_ADDRESS}:/outputs/$IMG_DIR $IMG_DIR 
-
-```
