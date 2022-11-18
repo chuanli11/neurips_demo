@@ -4,59 +4,74 @@
 ## Open questions
 
 * Optimize workflow throughput for multiple simultaneous users; queue jobs?
-* Finalize dreambooth training params
-* Collection of high quality prompts
-* Mode of transfer from camera to local tensorbook
-* Mode of transfer from cloud to end user
-* Instructions for forming input image dataset (# of pics, angles, facial expressions)
-
+* Finalize best practice for:
+    * dreambooth training params,
+    * input pictures (qty, angles, facial expressions)
+    * Set of high quality prompts for inference
+* Mode of picture transfer:
+    * from camera to local tensorbook
+    * from cloud instance to end user
+* Streamline installing xformers on cloud instance
 
 ## Workflow
 
 **Setup**
-* Cloud: one of more cloud A100x8 Instance setup:
-    * ssh key
-        Add new ssh key: https://cloud.lambdalabs.com/ssh-keys
-        sudo chmod 600 /path/to/my/key.pem
-        ssh ubuntu@{CLOUD_IP} -i /path/to/my/key.pem
-    * connected to persistent storage
-    * repo code loaded -> NO NEED TO UPLOAD SCRIPT RAN THROUGH SSH
-    * library installed (including xformers)
-* Local: one or more tensorbooks setup:
+
+TODO: Add persistent storage
+
+* [Create ssh key in lambda dashboard](https://cloud.lambdalabs.com/ssh-keys)
+* Send private key to all tensorbook; update permission `sudo chmod 600 /path/to/my/key.pem`
+* Launch cloud instance(s) and attach new ssh key to it
+* Test ssh access: `ssh ubuntu@{CLOUD_IP} -i /path/to/my/key.pem`
+* Update ssh config file in tensorbooks;
+`sudo nano ~/.ssh/config`:
 ```
-git clone https://github.com/eolecvk/neurips_demo.git
-cd neurips_demo
-/bin/bash local_setup.sh
+Host lambda-001
+    HostName <CLOUD_IP_HERE>
+    User ubuntu
+    IdentityFile /path/to/my/key.pem
+```
+* 
+```
+# Install model code
+git clone https://github.com/huggingface/diffusers.git
+cd diffusers/examples/dreambooth
+pip install --upgrade pip
+pip install -U -r requirements.txt
+accelerate config
+huggingface-cli login
+
+# Install xformers for faster inference
+# cf inference.py : `pipe.enable_xformers_memory_efficient_attention()`
+# ...TBC
 ```
 
 **Take pictures of users**
-* How many pictures?
-* What kind of angles?
-* What kind of facial expressions?
 
 **Transfer pictures of users from camera to tensorbook**
-* miniSD card ?
-* bluetooth ?
-* ???
 
 **Transfer pictures of users from tensorbook to cloud persistent storage**
 `upload_img.sh`
 ```
 #!/bin/bash
 
-IMG_DIR=???
-IP_ADDRESS=104.171.203.185
-rsync -avh $IMG_DIR root@${IP_ADDRESS}:/${IMG_DIR}  /inputs/$IMG_DIR
+export HOSTNAME='lambda-001'
+export RUN_ID='eolecvk'
+export IMG_DIR_SRC='/home/eole/Desktop/pic_me'
+export IMG_DIR_DST=/home/ubuntu/inputs/${RUN_ID}
+
+ssh ${HOSTNAME} "mkdir -p '${IMG_DIR_DST}'"
+rsync -avh ${IMG_DIR_SRC}/ lambda-001:${IMG_DIR_DST}
 ```
 
 **Launch remote training job from tensor notebook**
 `launch_job.sh`
 ```
 # training
-ssh root@${IP_ADDRESS} 'bash -s' < train.sh
+cat train.sh | ssh lambda-001
 
 # inference
-ssh root@${IP_ADDRESS} 'bash -s' < train.sh
+cat infer.py | ssh lambda-001 python -
 ```
 
 5. Download output pictures (or do we need to email it???)
