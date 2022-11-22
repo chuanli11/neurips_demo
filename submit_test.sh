@@ -30,27 +30,6 @@ CMD_ENV+="export MODEL_DIR=${MODEL_DIR} &&"
 CMD_ENV+="export STORAGE_DIR=${STORAGE_DIR} &&"
 CMD_ENV+="export DREAMBOOTH_CODE_DIR=${DREAMBOOTH_CODE_DIR}"
 
-echo "Set up project on remote server: "
-CMD_WORKSPACE=$CMD_ENV" && "
-CMD_WORKSPACE+=$(cat create_workspace.sh)
-echo $CMD_WORKSPACE | sed "s/ [\\]//g"
-echo $CMD_WORKSPACE | sed "s/ [\\]//g" | ssh lambda-001
-
-echo "Resize images in ${WEBCAM_DIR}: "
-python compress.py ${WEBCAM_DIR}
-
-echo "Upload images to ${INPUT_DIR}: "
-rsync -avh ${WEBCAM_DIR}/*.jpg lambda-001:${INPUT_DIR}
-mkdir -p ${WEBCAM_DIR}_bk
-mv ${WEBCAM_DIR}/*.jpg ${WEBCAM_DIR}_bk
-
-echo "Train Dreambooth: "
-CMD_TRAIN=$CMD_ENV" && "
-CMD_TRAIN+=$(cat train.sh)
-echo $CMD_TRAIN | sed "s/ [\\]//g"
-echo $CMD_TRAIN | sed "s/ [\\]//g" | ssh lambda-001
-echo "Training job ${RUN_ID} done, GPU ${GPU_ID} is free."
-
 echo "Test Dreambooth: "
 CMD_TEST=$CMD_ENV" && "
 CMD_TEST+=$(cat test.sh)
